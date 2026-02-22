@@ -17,7 +17,7 @@ public class JournalEntity {
     @NonNull
     private String title;
     private String content;
-    private LocalDateTime Date;
+    private LocalDateTime date;
 
 
 

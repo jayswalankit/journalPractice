@@ -3,9 +3,12 @@ package com.Journal.testJournal.Service;
 import com.Journal.testJournal.Entity.JournalEntity;
 import com.Journal.testJournal.Entity.UserEntity;
 import com.Journal.testJournal.Repository.JournalRepo;
-import com.Journal.testJournal.Repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class JournalService {
@@ -14,29 +17,25 @@ public class JournalService {
     private JournalRepo journalRepo;
 
     @Autowired
-    private UserRepo userRepo;
+    private UserService userService;
 
     /// create journal and link with user
-    public JournalEntity create(JournalEntity journal, String userId) {
+    @Transactional
+    public JournalEntity create(JournalEntity journal, String userName) {
 
-        UserEntity user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        UserEntity user = userService.findByUserName(userName)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userName));
 
         JournalEntity savedJournal = journalRepo.save(journal);
 
-        user.getList().add(savedJournal);   // 🔥 linking
-        userRepo.save(user);
+        user.getList().add(savedJournal);
+        userService.save(user);
 
         return savedJournal;
     }
 
-    /// get all journals of a user
-    public java.util.List<JournalEntity> journalList(String userName) {
-        UserEntity user = userRepo.findByUserName(userName)
-                .orElseThrow(() -> new RuntimeException("User not found with username: " + userName));
 
-        return user.getList();
-    }
+
 
     /// get journal by id
     public JournalEntity journalEntity(String journalId) {
@@ -45,29 +44,33 @@ public class JournalService {
     }
 
     /// update journal
-    public JournalEntity update(String journalId, JournalEntity updatedJournal) {
-        JournalEntity journal = journalRepo.findById(journalId)
-                .orElseThrow(() -> new RuntimeException("Journal not found with id: " + journalId));
-
-        journal.setTitle(updatedJournal.getTitle());
-        journal.setContent(updatedJournal.getContent());
-        journal.setDate(updatedJournal.getDate());
-
-        return journalRepo.save(journal);
+    public JournalEntity update(String id, JournalEntity updatedJournal , String userName) {
+        UserEntity user= userService.findByUserName(userName)
+                .orElseThrow(()-> new RuntimeException("User Not Found" + userName));
+        updatedJournal.setDate(LocalDateTime.now());
+       JournalEntity saved=journalRepo.save(updatedJournal);
+       user.getList().add(saved);
+       userService.save(user);
+                return saved;
     }
 
     /// delete journal from user + collection
-    public void delete(String userId, String journalId) {
+    @Transactional
+    public void deleteById(String userId, String userName) {
 
-        UserEntity user = userRepo.findById(userId)
+        UserEntity user = userService.findByUserName(userName)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        JournalEntity journal = journalRepo.findById(journalId)
-                .orElseThrow(() -> new RuntimeException("Journal not found"));
 
-        user.getList().removeIf(j -> j.getId().equals(journalId));
-        userRepo.save(user);
+        user.getList().removeIf(j -> j.getId().equals(userId));
+        userService.save(user);
 
-        journalRepo.deleteById(journalId);
+        journalRepo.deleteById(userId);
     }
+
+    public Optional<JournalEntity> findById(String id) {
+       return  journalRepo.findById(id);
+    }
+
+
 }

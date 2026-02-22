@@ -29,6 +29,7 @@ public class UserEntity {
 
     @DBRef(lazy = true)
     private List<JournalEntity>list=new ArrayList<>();
+    private List<String>roles;
 
 
 

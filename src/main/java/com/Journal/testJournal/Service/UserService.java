@@ -4,7 +4,9 @@ import com.Journal.testJournal.Entity.UserEntity;
 import com.Journal.testJournal.Repository.UserRepo;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +22,10 @@ public class UserService {
     @Autowired
     UserRepo userRepo;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+
     ///  to get all Lists
     public List<UserEntity> list() {
         return userRepo.findAll();
@@ -31,25 +37,42 @@ public class UserService {
     }
     ///  to create a user...
 
+    @Transactional
     public UserEntity create(UserEntity create){
-           userRepo.save(create);
-        return create;
+          create.setPassword(passwordEncoder.encode(create.getPassword()));
+          create.setRoles(List.of("USER"));
+          return userRepo.save(create);
     }
-
      /// to update
-    public UserEntity update(String  id, UserEntity updateUser ){
-        UserEntity user =userRepo.findById(id)
-                .orElseThrow(()->new UserNotFoundException(id));
-               user.setEmail(updateUser.getEmail());
-               user.setMobileNo(updateUser.getMobileNo());
-               user.setPassword(updateUser.getPassword());
-              return  userRepo.save(user);
+     @Transactional
+    public UserEntity update(String  userName, UserEntity updateUser ){
+         UserEntity existingUser = userRepo.findByUserName(userName)
+                 .orElseThrow(() ->
+                         new RuntimeException("User Not Found " + userName)
+                 );
+         if(updateUser.getUserName()!=null){
+           existingUser.setUserName(updateUser.getUserName());
+         }
+
+         if(updateUser.getEmail()!=null){
+             existingUser.setEmail(updateUser.getEmail());
+         }
+
+         if(updateUser.getMobileNo()!=null){
+             existingUser.setMobileNo(updateUser.getMobileNo());
+         }
+
+         if(updateUser.getPassword()!=null){
+             existingUser.setPassword(passwordEncoder.encode(updateUser.getPassword()));
+         }
+             return userRepo.save(existingUser);
     }
     ///  to delete
-    public Optional<UserEntity>delete(String id){
-        Optional<UserEntity> user=userRepo.findById(id);
-         user.ifPresent(u->userRepo.deleteById(id));
-         return user;
+    @Transactional
+    public void delete(String userName) {
+      UserEntity user=userRepo.findByUserName(userName)
+              .orElseThrow(()->new RuntimeException("User not found "+ userName));
+      userRepo.delete(user);
     }
 
     public Optional<UserEntity> findById(String id) {
@@ -58,5 +81,11 @@ public class UserService {
 
     public Optional<UserEntity> findByUserName(String userName) {
         return userRepo.findByUserName(userName);
+    }
+
+
+    ///  to save journal entries
+    public void save(UserEntity user) {
+        userRepo.save(user);
     }
 }
